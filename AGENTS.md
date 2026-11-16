@@ -87,6 +87,8 @@ QA tip from 2026-11-08: set the delay to 1 day and backdate a test shipment's `s
 
 ## Change history
 
+- **2026-11-16** — Released as free software under GPL-3.0-or-later (owner decision): `LICENSE` added,
+  `composer.json` license changed from `proprietary`, License section in the README.
 - **2026-11-15 storefront links in admin-sent emails**: Built in an admin request (including the Email Designer preview), `unsubscribeUrl` came out as an admin link with a secret key, because `Store::getUrl()` uses the area's `UrlInterface`. `InvitationSender` now builds storefront links with its own non-shared `Magento\Framework\Url` (`frontendUrl`, `etc/di.xml`) scoped to the email's store; tests in `InvitationSenderTest`.
 - **2026-11-15 Email Designer real-data preview**: `Model\EmailPreview` (see Architecture). The products loop and template variables moved from `sendOrder()` into `InvitationSender::templateVars()` (null = nothing to review), used by the sender and the preview. Tests in `EmailPreviewTest`.
 - **2026-11-13 Email Designer blocks and starter designs**: `etc/di.xml` registers the *Products to review* block and a starter design that recreates the invitation (heading, texts, products, thank-you and unsubscribe line as editable text).
