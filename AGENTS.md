@@ -4,7 +4,7 @@ Read this before changing the module. Workspace-wide rules are in ../AGENTS.md.
 
 ## Status
 
-Package `tonyapps/module-review-reminder` 0.1.0. WORKPLAN shortlist #1 (quick win): "built, manual QA pending".
+Package `tonyapps/module-review-reminder` 1.0.0. WORKPLAN shortlist #1 (quick win): "built, manual QA pending".
 
 | Phase | Scope | Status |
 |---|---|---|
