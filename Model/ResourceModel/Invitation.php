@@ -40,6 +40,31 @@ class Invitation
         return $connection->fetchAll($select);
     }
 
+    /**
+     * Read-only, for the Email Designer preview: shipped orders that can get an invitation or already have one,
+     * newest first, with the columns of getDueOrders() plus customer_lastname and created_at. $orderId picks one order.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function getPreviewOrders(int $limit, ?int $orderId = null): array
+    {
+        $connection = $this->resource->getConnection();
+        $select = $connection->select()
+            ->from(['o' => $this->resource->getTableName('sales_order')], [
+                'entity_id', 'store_id', 'customer_email', 'customer_firstname', 'customer_lastname', 'increment_id', 'created_at',
+            ])
+            ->joinLeft(['r' => $this->resource->getTableName('tonyapps_review_reminder')], 'r.order_id = o.entity_id', ['token'])
+            ->where('EXISTS (?)', $connection->select()->from(['s' => $this->resource->getTableName('sales_shipment')], [new \Magento\Framework\DB\Sql\Expression('1')])
+                ->where('s.order_id = o.entity_id'))
+            ->where('o.customer_email IS NOT NULL')->where("o.customer_email <> ''")
+            ->where('o.state NOT IN (?)', [\Magento\Sales\Model\Order::STATE_CANCELED, \Magento\Sales\Model\Order::STATE_CLOSED])
+            ->order('o.entity_id DESC')->limit($limit);
+        if ($orderId !== null) {
+            $select->where('o.entity_id = ?', $orderId);
+        }
+        return $connection->fetchAll($select);
+    }
+
     public function create(int $orderId, int $storeId, string $email, string $token): void
     {
         $connection = $this->resource->getConnection();

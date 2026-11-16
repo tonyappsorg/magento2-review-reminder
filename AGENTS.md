@@ -35,6 +35,7 @@ Why it exists: Magento Open Source supports product reviews, but it does not sen
 - Unsubscribe: `Controller\Reminder\Unsubscribe` (GET confirm page, POST → `Invitation::unsubscribe($email)` sets status 2) then `Controller\Reminder\Unsubscribed`. Layouts `reviewreminder_reminder_unsubscribe(d).xml`, templates `unsubscribe.phtml`, `unsubscribed.phtml`.
 - Verified buyer: `Observer\MarkVerifiedBuyer` on `review_save_after` → `Model\ResourceModel\VerifiedReview::associate($reviewId, $customerId, $productId)`: latest shipped order item of that customer and product (order not canceled) is stored in `tonyapps_review_reminder_verified_review`. Display: `Plugin\Review\Block\Product\View\ListViewPlugin` (frontend `di.xml`, on `Magento\Review\Block\Product\View\ListView`) fetches `getVerifiedIds()`; template `product/view/list.phtml` replaces core's via `review_product_list.xml` and `review_product_listajax.xml` (block `product.info.product_additional_data`) and prints the "Verified Buyer" span.
 - Review-form opener: `view/frontend/web/js/open-review-form.js`, loaded on product pages by `catalog_product_view.xml` (`before.body.end`, `product/open-review-form.phtml`); opens the Reviews tab and scrolls to the form when the URL hash is `#review-form`.
+- Email Designer real-data preview: `Model\EmailPreview` (registered on `Tonyapps\EmailDesigner\Model\PreviewPool` in `etc/di.xml`, duck-typed). Records: the 20 newest shipped, not canceled/closed orders with an email, invited or not (`ResourceModel\Invitation::getPreviewOrders()`, no delay/age filter). Variables come from `InvitationSender::templateVars()` (also used by the sender) in the order's store emulation; an order with nothing reviewable is refused. Read-only: an order without an invitation row gets the placeholder token `preview` (unsubscribe link shows "no longer valid"); nothing is created or marked. `getStoreId()` returns the order's store, so the designer renders and test-sends from it.
 - Config reader: `Helper\Config` (`enabled`, `delayDays`, `identity`, `template`).
 - Email Designer (`etc/di.xml`, ignored without `Tonyapps_EmailDesigner`): block `reviewreminder_products` (*Products to review*, the `{{for product in products}}` loop) and starter `view/adminhtml/email_designer/invitation.mjml` for `tonyapps_reviewreminder_email_template`.
 
@@ -73,7 +74,7 @@ Email template ID: `tonyapps_reviewreminder_email_template` (file `invitation.ht
 vendor/bin/phpunit -c dev/tests/unit/phpunit.xml.dist app/code/Tonyapps/ReviewReminder/Test/Unit
 ```
 
-Unit tests: InvitationSender, Invitation resource, MarkVerifiedBuyer, ListViewPlugin, invitation email template, open-review-form script. Elsewhere: `../EmailDesigner/Test/Integration/Model/ModuleEmailsTest.php` (template setting) and Playwright `../e2e/tests/review-reminder.spec.js`.
+Unit tests: InvitationSender, EmailPreview, Invitation resource, MarkVerifiedBuyer, ListViewPlugin, invitation email template, open-review-form script. Elsewhere: `../EmailDesigner/Test/Integration/Model/ModuleEmailsTest.php` (template setting) and Playwright `../e2e/tests/review-reminder.spec.js`.
 
 ## Operations
 
@@ -86,6 +87,8 @@ QA tip from 2026-11-08: set the delay to 1 day and backdate a test shipment's `s
 
 ## Change history
 
+- **2026-11-15 storefront links in admin-sent emails**: Built in an admin request (including the Email Designer preview), `unsubscribeUrl` came out as an admin link with a secret key, because `Store::getUrl()` uses the area's `UrlInterface`. `InvitationSender` now builds storefront links with its own non-shared `Magento\Framework\Url` (`frontendUrl`, `etc/di.xml`) scoped to the email's store; tests in `InvitationSenderTest`.
+- **2026-11-15 Email Designer real-data preview**: `Model\EmailPreview` (see Architecture). The products loop and template variables moved from `sendOrder()` into `InvitationSender::templateVars()` (null = nothing to review), used by the sender and the preview. Tests in `EmailPreviewTest`.
 - **2026-11-13 Email Designer blocks and starter designs**: `etc/di.xml` registers the *Products to review* block and a starter design that recreates the invitation (heading, texts, products, thank-you and unsubscribe line as editable text).
 - **2026-11-13 reviewable products**: products that are disabled, not visible individually or not in the store's website are left out of the invitation, and stores with *Enable Reviews* off get none. An order with nothing left to review is marked status 4 (nothing to review) instead of 1 (sent). Tests in `InvitationSenderTest`, `InvitationTest`.
 - **2026-11-11 template ID rename**: default template ID is `tonyapps_reviewreminder_email_template` (was `tonyapps_reviewreminder_invitation`). The template setting lists the default under an ID made from its config path, so the old ID made the setting fail with "Email template is not defined" and no other template could be picked. Theme overrides keep working (they go by file name). Lets stores pick Email Designer designs.

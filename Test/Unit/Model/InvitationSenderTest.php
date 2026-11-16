@@ -8,6 +8,7 @@ use Magento\Catalog\Model\Product;
 use Magento\Framework\Mail\Template\TransportBuilder;
 use Magento\Framework\Mail\TransportInterface;
 use Magento\Framework\Math\Random;
+use Magento\Framework\Url;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Item;
 use Magento\Sales\Model\OrderFactory;
@@ -52,7 +53,8 @@ class InvitationSenderTest extends TestCase
             $emulation,
             $this->createMock(TransportBuilder::class),
             $this->createMock(LoggerInterface::class),
-            $this->createMock(Image::class)
+            $this->createMock(Image::class),
+            $this->createMock(Url::class)
         ))->send();
     }
 
@@ -62,7 +64,13 @@ class InvitationSenderTest extends TestCase
         $store->method('getId')->willReturn(1);
         $store->method('getFrontendName')->willReturn('Luma');
         $store->method('getWebsiteId')->willReturn(1);
-        $store->method('getUrl')->willReturn('https://shop/unsubscribe');
+        $store->expects(self::never())->method('getUrl');
+        // The storefront builder of the order's store, so a run from an admin request gets no admin link.
+        $frontendUrl = $this->createMock(Url::class);
+        $frontendUrl->expects(self::once())->method('setScope')->with(1)->willReturnSelf();
+        $frontendUrl->expects(self::once())->method('getUrl')
+            ->with('reviewreminder/reminder/unsubscribe', ['token' => 'abc', '_nosid' => true])
+            ->willReturn('https://shop/reviewreminder/reminder/unsubscribe/token/abc/');
         $storeManager = $this->createMock(StoreManagerInterface::class);
         $storeManager->method('getStores')->willReturn([$store]);
         $storeManager->method('getStore')->willReturn($store);
@@ -105,6 +113,7 @@ class InvitationSenderTest extends TestCase
         $transportBuilder->expects(self::once())->method('setTemplateVars')
             ->with(self::callback(static fn(array $vars): bool => $vars['storeName'] === 'Luma'
                 && $vars['reviewButtonLabel'] === 'Write a review'
+                && $vars['unsubscribeUrl'] === 'https://shop/reviewreminder/reminder/unsubscribe/token/abc/'
                 && $vars['products'] === [[
                     'name' => 'Tank',
                     'url' => 'https://shop/tank.html#review-form',
@@ -121,7 +130,8 @@ class InvitationSenderTest extends TestCase
             $this->createMock(Emulation::class),
             $transportBuilder,
             $this->createMock(LoggerInterface::class),
-            $image
+            $image,
+            $frontendUrl
         ))->send();
     }
 
@@ -180,7 +190,8 @@ class InvitationSenderTest extends TestCase
             $this->createMock(Emulation::class),
             $transportBuilder,
             $this->createMock(LoggerInterface::class),
-            $this->createMock(Image::class)
+            $this->createMock(Image::class),
+            $this->createMock(Url::class)
         ))->send();
     }
 
@@ -205,7 +216,8 @@ class InvitationSenderTest extends TestCase
             $this->createMock(Emulation::class),
             $this->createMock(TransportBuilder::class),
             $this->createMock(LoggerInterface::class),
-            $this->createMock(Image::class)
+            $this->createMock(Image::class),
+            $this->createMock(Url::class)
         ))->send();
     }
 }

@@ -8,6 +8,7 @@ use Magento\Catalog\Model\Product\Attribute\Source\Status;
 use Magento\Framework\App\Area;
 use Magento\Framework\Mail\Template\TransportBuilder;
 use Magento\Framework\Math\Random;
+use Magento\Framework\Url;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Item;
 use Magento\Sales\Model\OrderFactory;
@@ -28,7 +29,9 @@ class InvitationSender
         private readonly Emulation $emulation,
         private readonly TransportBuilder $transportBuilder,
         private readonly LoggerInterface $logger,
-        private readonly Image $imageHelper
+        private readonly Image $imageHelper,
+        // Storefront URL builder: the injected UrlInterface is the admin one in admin requests (links get the admin path and a secret key).
+        private readonly Url $frontendUrl
     ) {
     }
 
@@ -71,6 +74,28 @@ class InvitationSender
      */
     private function sendOrder(array $row, string $token, int $storeId): bool
     {
+        $vars = $this->templateVars($row, $token, $storeId);
+        if ($vars === null) {
+            return false;
+        }
+        $this->transportBuilder->setTemplateIdentifier($this->config->template($storeId))
+            ->setTemplateOptions(['area' => Area::AREA_FRONTEND, 'store' => $storeId])
+            ->setTemplateVars($vars)
+            ->setFromByScope($this->config->identity($storeId), $storeId)
+            ->addTo((string) $row['customer_email'])
+            ->getTransport()->sendMessage();
+        return true;
+    }
+
+    /**
+     * The invitation's template variables. Shared with the Email Designer preview (Model\EmailPreview); call it in
+     * the order's store emulation, as send() does.
+     *
+     * @param array<string, mixed> $row a getDueOrders() row
+     * @return array<string, mixed>|null null when no shipped product can be reviewed
+     */
+    public function templateVars(array $row, string $token, int $storeId): ?array
+    {
         $websiteId = (int) $this->storeManager->getStore($storeId)->getWebsiteId();
         /** @var Order $order */
         $order = $this->orderFactory->create()->load((int) $row['entity_id']);
@@ -95,24 +120,18 @@ class InvitationSender
             ];
         }
         if (!$products) {
-            return false;
+            return null;
         }
         $store = $this->storeManager->getStore($storeId);
-        $unsubscribeUrl = $store->getUrl('reviewreminder/reminder/unsubscribe', ['token' => $token, '_nosid' => true]);
-        $this->transportBuilder->setTemplateIdentifier($this->config->template($storeId))
-            ->setTemplateOptions(['area' => Area::AREA_FRONTEND, 'store' => $storeId])
-            ->setTemplateVars([
-                'customerName' => (string) $row['customer_firstname'] ?: (string) __('there'),
-                'products' => $products,
-                'unsubscribeUrl' => $unsubscribeUrl,
-                'orderIncrementId' => (string) $row['increment_id'],
-                'storeName' => (string) $store->getFrontendName(),
-                // {{trans}} does not run inside {{for}}; the template reads this variable instead.
-                'reviewButtonLabel' => (string) __('Write a review'),
-            ])
-            ->setFromByScope($this->config->identity($storeId), $storeId)
-            ->addTo((string) $row['customer_email'])
-            ->getTransport()->sendMessage();
-        return true;
+        return [
+            'customerName' => (string) $row['customer_firstname'] ?: (string) __('there'),
+            'products' => $products,
+            'unsubscribeUrl' => $this->frontendUrl->setScope($storeId)
+                ->getUrl('reviewreminder/reminder/unsubscribe', ['token' => $token, '_nosid' => true]),
+            'orderIncrementId' => (string) $row['increment_id'],
+            'storeName' => (string) $store->getFrontendName(),
+            // {{trans}} does not run inside {{for}}; the template reads this variable instead.
+            'reviewButtonLabel' => (string) __('Write a review'),
+        ];
     }
 }
