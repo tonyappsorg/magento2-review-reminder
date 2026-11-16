@@ -66,7 +66,7 @@ Email template ID: `tonyapps_reviewreminder_email_template` (file `invitation.ht
 ## Known limitations and open points
 
 - Guest reviews are never marked verified (core keeps no reviewer email).
-- Hyvä not checked.
+- Hyvä: checked 2026-11-16 on the DDEV Hyvä store view; the storefront pages are server-rendered forms and work as-is, buttons carry Hyvä's `btn btn-primary` next to Luma's classes.
 
 ## Tests
 
@@ -87,6 +87,7 @@ QA tip from 2026-11-08: set the delay to 1 day and backdate a test shipment's `s
 
 ## Change history
 
+- **2026-11-16** — Hyvä: token-page buttons get Hyvä's `btn btn-primary` next to the Luma classes (one template for both themes).
 - **2026-11-16** — Released as free software under GPL-3.0-or-later (owner decision): `LICENSE` added,
   `composer.json` license changed from `proprietary`, License section in the README.
 - **2026-11-15 storefront links in admin-sent emails**: Built in an admin request (including the Email Designer preview), `unsubscribeUrl` came out as an admin link with a secret key, because `Store::getUrl()` uses the area's `UrlInterface`. `InvitationSender` now builds storefront links with its own non-shared `Magento\Framework\Url` (`frontendUrl`, `etc/di.xml`) scoped to the email's store; tests in `InvitationSenderTest`.

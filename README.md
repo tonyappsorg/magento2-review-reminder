@@ -39,9 +39,9 @@ Emails as sent (Luma theme, 2026-11-09).
 - "Verified Buyer" is not removed if the order is refunded later.
 - The email link doesn't log the shopper in or write anything on their behalf.
 - Requires Magento cron to be running.
-- Built and tested on the Luma theme; Hyvä has not been checked.
 
 ## Requirements
+- Works with the Luma and Hyvä themes
 
 - Magento Open Source 2.4.8
 - PHP 8.3 or 8.4
